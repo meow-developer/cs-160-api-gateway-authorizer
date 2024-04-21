@@ -1,5 +1,5 @@
 import { APIGatewayTokenAuthorizerEvent, APIGatewayAuthorizerResult, Context, Callback } from 'aws-lambda';
-import PolicyGenerator from './service/authorization.js';
+import PolicyGenerator from './service/policyGenerator.js';
 import TokenVerify from './service/tokenVerify.js';
 
 export const handler = async(
