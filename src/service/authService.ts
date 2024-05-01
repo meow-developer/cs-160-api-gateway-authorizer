@@ -15,18 +15,32 @@ class AuthValidateError {
 
 export default class AuthService {
     private path: string;
-    private jwt: string;
+    private authHeader: string;
 
-    constructor(path: string, jwt: string) {
+    constructor(path: string, authHeader: string) {
         this.path = path;
-        this.jwt = jwt;
+        this.authHeader = authHeader;
     }
-    private async verifyToken(): Promise<LegitJwtPayload> {
+    private parseJwtFromHeader(): string {
+        const parts = this.authHeader.split(' ');
+        if (parts.length !== 2) {
+            throw new AuthValidateError("Invalid authorization header");
+        }
+        const scheme = parts[0];
+        const jwt = parts[1];
+
+        if (!/^Bearer$/i.test(scheme)) {
+            throw new AuthValidateError("Invalid authorization header");
+        }
+
+        return jwt;
+    }
+    private async verifyToken(jwt: string): Promise<LegitJwtPayload> {
         const jwtSecretKeyStorage = JwtSecretKeyStorage.getInstance();
         try {
             const secretKey = await jwtSecretKeyStorage.getSecretKey();
 
-            const decoded = verify(this.jwt, secretKey);
+            const decoded = verify(jwt, secretKey);
 
             return decoded as LegitJwtPayload;
 
@@ -64,7 +78,8 @@ export default class AuthService {
     }
     public async authorize(): Promise<APIGatewaySimpleAuthorizerResult> {
         try {
-            const legitJwtPayload = await this.verifyToken();
+            const jwt = this.parseJwtFromHeader();
+            const legitJwtPayload = await this.verifyToken(jwt);
             const userId = await this.getUserUUIDFromToken(legitJwtPayload);
             this.checkPathMatchWithUserId(userId);
             return this.generateAllowPolicy(userId);
